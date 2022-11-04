@@ -1,0 +1,67 @@
+output_dir: /NBFNet_WikikG_v2/output
+
+dataset:
+  class: WikiKG90MNumpy
+  path: /WikiKG90Mv2
+  num_hop: 2
+  num_neighbor: 100
+  num_negative: 50
+  strict_negative: no
+  valid_neighbor: 150
+  valid_expand: 30
+  num_neg: method1
+  candidate: 1018v2
+
+  
+
+task:
+  class: KnowledgeGraphEmbeddingKDDCup
+  model:
+    class: BatchedBellmanFordKDDCup
+    gnn_model:
+      class: BatchedSemiringGCNKDDCup
+      input_dim: 32
+      hidden_dims: [32, 32, 32, 32, 32, 32,32]
+      pna_aggregation: yes
+      short_cut: yes
+      batch_norm: yes
+      query_dependent: yes
+      num_mlp_layer: 2
+    score_model:
+      class: MLPScoreKDDCup
+      embedding_dim: 32
+      num_feature: 2
+      hidden_dims: [128, 1]
+    use_query_relation: yes
+    flip_edge: yes
+    remove_one_hop: 1
+
+
+  criterion: red_gnn
+  adversarial_temperature: 1
+  use_cpu_sample: yes
+  batch_down_sample: yes
+  
+
+
+optimizer:
+  class: Adam
+  lr: 2.0e-4
+
+engine:
+  gpus: [0,1,2,3,4,5,6,7]
+  batch_size: 1
+  log_interval: 100
+  num_worker: 16
+  gradient_interval: 2
+
+train:
+  num_batch: 0
+
+
+test:
+  use_valid_as_test: no
+  range: [0,10000]
+
+checkpoint:
+  "/bellmanford_kddcup_best/model_epoch_6.pth"
