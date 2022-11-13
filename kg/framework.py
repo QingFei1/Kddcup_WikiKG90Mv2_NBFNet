@@ -422,7 +422,7 @@ class BatchedBellmanFordKDDCup(nn.Module, core.Configurable):
                 h_value = self.query_zero.weight[hr_index_set_r]
                 h_value = h_value[graph.node2graph]
             else:
-                h_value = torch.zeros(graph.num_node, relation_weight.shape[-1], device=self.device) #[num_node, 32]
+                h_value = torch.zeros(graph.num_node, relation_weight.shape[-1], device=self.device) 
 
             if self.learnable_tail:
                 h_value[t_index] = self.query_tail.weight[r_index]
@@ -437,7 +437,7 @@ class BatchedBellmanFordKDDCup(nn.Module, core.Configurable):
                     graph.query = relation_weight[hr_index_set_r]
             output = self.gnn_model(graph, h_value, all_loss, metric) 
             oneway = output["node_feature"]
-            feature = oneway[t_index] 
+            feature = oneway[t_index]  #[batch_size,negative,32]
 
         # additional features 
         if self.tied_relation_weight:   
@@ -474,9 +474,9 @@ class BatchedBellmanFordKDDCup(nn.Module, core.Configurable):
             t_feature = self.t_feature_linear(t_feature)
             t_feature = self.activation(t_feature)
             features.append(t_feature)
-        if self.use_graph_feature: 
+        if self.use_graph_feature: #No
             features.append(output["graph_feature"].unsqueeze(1).expand_as(feature))
-        if self.use_degree_feature: 
+        if self.use_degree_feature: #No
             degree = torch.stack([graph.full_degree_in[h_index], graph.full_degree_out[h_index],
                                   graph.full_degree_in[t_index], graph.full_degree_out[t_index]], dim=-1)
             degree = (degree + 1).log()

@@ -8,6 +8,7 @@ import time
 from tqdm import tqdm
 import random
 import torch
+# from torch._six import container_abcs
 import collections.abc as container_abcs
 int_classes = int
 string_classes = str
@@ -188,7 +189,7 @@ class WikiKG90MValid(torch_data.Dataset):
 class WikiKG90MNumpy(torch_data.Dataset, core.Configurable):
 
     def __init__(self, path, feature_file=None, train_relation=None,
-                 num_hop=2, num_neighbor=100, candidate="1024v2", valid_expand=20, test=False, valid_neighbor=30, num_neg="method1" ,num_head_neighbor=None, num_neighbor_expand=None,
+                 num_hop=2, num_neighbor=100, valid_candidate="1018v2", test_candidate="test_dev",valid_expand=20, test=False, valid_neighbor=30, num_neg="method1" ,num_head_neighbor=None, num_neighbor_expand=None,
                  degree_block_threshold=None,
                  uniform_negative_ratio=0, add_super_node=False, negative_hops=None,
                  init_distance_t=0, edge_one_more_hop=False, prune_isolated=0,
@@ -201,15 +202,20 @@ class WikiKG90MNumpy(torch_data.Dataset, core.Configurable):
         self.neg_list=compress_pickle.load('/data/wikikg_r2t_candidates.pkl.tar.gz') 
         self.valid_correct_index = np.load(os.path.join(path,"wikikg90m-v2", "processed", 'val_t.npy'), allow_pickle=True)
         
-        if candidate=='standard':
+        if valid_candidate=='standard':
             self.valid_candidate=np.load(os.path.join(path, "wikikg90m-v2", "processed", 'val_t_candidate.npy'), allow_pickle=True)
-        elif candidate=='1018v2':
+        elif valid_candidate=='1018v2':
             self.valid_candidate=np.load('/data/valid_candidates_20221018v2.npy', allow_pickle=True)
-        elif candidate=='1024v2':
+        elif valid_candidate=='1024v2':
             self.valid_candidate=np.load('/data/valid_candidates_20221024.npy', allow_pickle=True)
-        elif candidate=='60000v1':
-            self.valid_candidate=np.load('/valid_candidates_20221030v1_60000.npy', allow_pickle=True)
-        self.test_candidate=np.load('/test-challenge_candidates_20221101v1_20000.npy', allow_pickle=True)
+            print("1024v2")
+        elif valid_candidate=='60000v1':
+            self.valid_candidate=np.load('/data/valid_candidates_20221030v1_60000.npy', allow_pickle=True)
+        if test_candidate=="test_dev":
+            self.test_candidate=np.load('/data/test-dev_candidates_20221101v1_20000.npy', allow_pickle=True)
+            print("test_dev")
+        elif test_candidate=="test_challenge":
+            self.test_candidate=np.load('/data/test-challenge_candidates_20221101v1_20000.npy', allow_pickle=True)
      
         # safe to use int32
         edge_list = self.dataset.train_hrt[:, [0, 2, 1]].astype(np.int32) 
@@ -262,7 +268,7 @@ class WikiKG90MNumpy(torch_data.Dataset, core.Configurable):
 
         self.num_hop = num_hop 
         if not isinstance(num_neighbor, container_abcs.Sequence):
-            num_neighbor = [num_neighbor] * num_hop 
+            num_neighbor = [num_neighbor] * num_hop #[100,100]
         if num_head_neighbor is None:
             num_head_neighbor = num_neighbor
         if not isinstance(num_head_neighbor, container_abcs.Sequence):
@@ -308,8 +314,9 @@ class WikiKG90MNumpy(torch_data.Dataset, core.Configurable):
         train_set = self
         valid_set = WikiKG90MValidNumpy(self, self.valid_dict)
         test_set = WikiKG90MValidNumpy(self, self.test_dict)
+        valid_candidate=self.valid_candidate
 
-        return train_set, valid_set, test_set
+        return train_set, valid_set, test_set,valid_candidate
     def shuffle(self):
         perm = np.random.permutation(self.num_edge)
         inv_perm = perm.argsort().astype(np.int32)
@@ -418,7 +425,7 @@ class WikiKG90MNumpy(torch_data.Dataset, core.Configurable):
             expand = self.degree_out[u]                                                                               
             if self.degree_block_threshold is not None:
                 expand &= self.degree_out[u] <= self.degree_block_threshold
-                                                                                                    
+                                                                                            
             if self.valid ==True and distance[u] == 1 and expand > self.valid_expand:
                 continue
             if expand > 0:
@@ -574,6 +581,7 @@ class WikiKG90MNumpy(torch_data.Dataset, core.Configurable):
                     index = np.random.randint(0, self.num_entity)
                     neg_t_index.append(index)
         else:
+            # print("use all")
             if neg_len>=self.num_negative+2:
 
                 while len(t_index)<self.num_negative:
@@ -615,6 +623,9 @@ class WikiKG90MNumpy(torch_data.Dataset, core.Configurable):
         
         if self.num_negative > 0:                                           
             neg_t_index = self.get_negative_t(h_index, t_index, r_index)
+            #end = time.perf_counter()
+
+            #print('Running time: %s Seconds'%(end-start))
             nodes = [h_index, t_index] + neg_t_index  
             if self.use_entity_embedding:
                 h_embedding = self.entity_embedding[h_index]

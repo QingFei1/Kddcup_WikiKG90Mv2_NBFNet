@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @R.register("core.EngineEx")
 class EngineEx(core.Engine):
 
-    def __init__(self, task, train_set, valid_set,  test_set,  optimizer, scheduler=None, gpus=None, batch_size=1,
+    def __init__(self, task, train_set, valid_set,  test_set, valid_candidate, optimizer, scheduler=None, gpus=None, batch_size=1,
                  gradient_interval=1, num_test_view=1, num_worker=0, logger="logging",distributed=True, log_interval=100):
         self.rank = comm.get_rank()
         self.world_size = comm.get_world_size()
@@ -74,6 +74,7 @@ class EngineEx(core.Engine):
         self.train_set = train_set
         self.valid_set = valid_set
         self.test_set = test_set
+        self.valid_candidate = valid_candidate
         self.optimizer = optimizer
         self.scheduler = scheduler
 
@@ -155,7 +156,7 @@ class EngineEx(core.Engine):
                 self.scheduler.step()
 
     @torch.no_grad()   
-    def evaluate(self, split, log=True, keep_order=False ,precise_bn=False, dump_valid=False): 
+    def evaluate(self, split, log=True, keep_order=False ,precise_bn=False, dump_valid=False):
         if comm.get_rank() == 0:
             if precise_bn:
                 logger.warning("Computer precise BN statistics on %s" % split)
@@ -219,9 +220,8 @@ class EngineEx(core.Engine):
         if self.world_size > 1:
             pred = comm.cat(pred)
             target = comm.cat(target)  
-        #np.save("/score/test/pred.npy", pred)
-        metric = model.evaluate(pred, target)  
-        if log and not precise_bn:
+        metric = model.evaluate(pred, target,self.valid_candidate)  
+        if log and not precise_bn and target[0] > 0:
             self.meter.log(metric)
 
         return metric

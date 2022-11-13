@@ -9,7 +9,7 @@ dataset:
   strict_negative: no
   valid_neighbor: 80
   valid_expand: 30
-  candidate: 1018v2
+  valid_candidate: 1018v2
   num_neg: method1
   use_entity_embedding: True
   use_relation_embedding: True

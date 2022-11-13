@@ -10,7 +10,7 @@ dataset:
   valid_neighbor: 150
   valid_expand: 30
   num_neg: method2
-  candidate: 1018v2
+  valid_candidate: 1018v2
 
 
 task:

@@ -267,25 +267,33 @@ class KnowledgeGraphEmbeddingKDDCup(tasks.KnowledgeGraphCompletion, core.Configu
         assert 't_pred_top10' in input_dict['h,r->t']
 
         t_pred_top10 = input_dict['h,r->t']['t_pred_top10']
+
+        # assert t_pred_top10.shape == (1359303, 10)
         assert (0 <= t_pred_top10).all() and (t_pred_top10 < 20001).all()
 
         if isinstance(t_pred_top10, torch.Tensor):
             t_pred_top10 = t_pred_top10.cpu().numpy()
         t_pred_top10 = t_pred_top10.astype(np.int16)
 
-        filename = "t_pred_wikikg90m_%d_%d" % (self.test_range.start, self.test_range.stop)
+        filename = "t_test_pred_top10_wikikg90m_%d_%d" % (self.test_range.start, self.test_range.stop)
         test_range = np.array([self.test_range.start, self.test_range.stop])
         np.savez_compressed(filename, t_pred_top10=t_pred_top10, test_range=test_range)
 
-    def evaluate(self, pred, target):
-        if target[0] < 0: 
+    def evaluate(self, pred, target,valid_candidate):
+       
+        if target[0] < 0:
+            filename = "t_test_pred_wikikg90m"
+            np.save(filename,pred)
+            logger.warning("save test_pred file")
             if comm.get_rank() == 0:
                 logger.warning("save submission file")
             input_dict = {}
             input_dict["h,r->t"] = {"t_pred_top10": pred.topk(k=10, dim=-1)[1]}
             self.save_test_submission(input_dict)
             return
-        valid_candidate = np.load("/data/valid_candidates_20221018v2.npy", mmap_mode='r')
+        filename = "t_valid_pred_wikikg90m"
+        np.save(filename,pred)
+        logger.warning("save valid_pred file")
         t_pred_top10 = np.ones((pred.shape[0], 10)) * (-1)
         for i in range(pred.shape[0]):
             score = pred[i]

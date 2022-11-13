@@ -49,7 +49,7 @@ if __name__ == "__main__":
     cfgs = util.load_config(args.config)
     cfgs[0].output_dir = cfgs[0].output_dir.replace("zhuzhaoc", getpass.getuser())
 
-    seed = cfgs[0].get("seed", 2048)
+    seed = cfgs[0].get("seed", 1024)
     torch.manual_seed(seed)
     np_seed = cfgs[0].get("numpy_seed", seed)
     np.random.seed(np_seed)
@@ -87,11 +87,11 @@ if __name__ == "__main__":
             _dataset = core.Configurable.load_config_dict(cfg.dataset) 
             logger.warning("[%d] end loading dataset" % comm.get_rank())
 
-            train_set, valid_set, test_set = _dataset.split() 
+            train_set, valid_set, test_set,valid_candidate = _dataset.split() 
             logger.warning("[%d] end split dataset" % comm.get_rank())
             full_valid_set = valid_set
             full_test_set = test_set
-            valid_set = torch_data.random_split(valid_set, (len(valid_set) , len(valid_set) - len(valid_set) ))[0]
+            valid_set = torch_data.random_split(valid_set, (len(valid_set) , len(valid_set) - len(valid_set)))[0]
            
             # if comm.get_rank() == 0:
             #     with open("/home/b/bengioy/zhuzhaoc/scratch/small_valid_indices.pkl", "wb") as fout:
@@ -147,7 +147,7 @@ if __name__ == "__main__":
                     test_set = copy.copy(full_valid_set)
                     # test_set.t_correct_index = None
                 else:
-                    test_set = copy.copy(valid_set)
+                    test_set = copy.copy(full_valid_set)
                     cfg.test.range = [0, len(valid_set)]
                     test_set.dataset.t_correct_index = None 
             else:
@@ -155,7 +155,7 @@ if __name__ == "__main__":
             test_range = range(*cfg.test.range)
             test_set = torch_data.Subset(test_set, test_range)
 
-        solver = engine.EngineEx(_task, train_set, valid_set, test_set, optimizer, scheduler, **cfg.engine) 
+        solver = engine.EngineEx(_task, train_set, valid_set, test_set, valid_candidate,optimizer, scheduler, **cfg.engine) 
         sub_train_set = torch_data.random_split(train_set, [len(valid_set), len(train_set) - len(valid_set)])[0] 
         if "checkpoint" in cfg:
             if comm.get_rank() == 0:
